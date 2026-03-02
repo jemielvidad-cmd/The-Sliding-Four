@@ -1,0 +1,5 @@
+{
+  "name": "The Sliding Four",
+  "description": "A high-stakes multiplayer deduction game where players bid on mystery cards relative to a reference anchor.",
+  "requestFramePermissions": []
+}
