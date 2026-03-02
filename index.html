@@ -1,13 +1,231 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-  </body>
-</html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Sliding Four: Casino Edition</title>
+    <style>
+        :root {
+            --gold: #d4af37;
+            --felt: #076324;
+            --card-white: #ffffff;
+        }
 
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Mobile-First Header */
+        header {
+            width: 100%;
+            padding: 10px;
+            text-align: center;
+            background: linear-gradient(to bottom, #333, #1a1a1a);
+            border-bottom: 2px solid var(--gold);
+        }
+
+        #pot-display {
+            font-size: 1.2rem;
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        /* The Dealer Table */
+        .table {
+            flex: 1;
+            width: 100%;
+            max-width: 500px;
+            background: radial-gradient(circle, var(--felt) 0%, #043d16 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Banker Row: 2x2 Grid for Mobile */
+        .banker-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .card-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .card {
+            width: 80px;
+            height: 120px;
+            background: var(--card-white);
+            border-radius: 8px;
+            border: 2px solid #999;
+            color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .card.back {
+            background: repeating-linear-gradient(45deg, #b30000, #b30000 10px, #800000 10px, #800000 20px);
+            color: transparent;
+        }
+
+        .slide-indicator {
+            font-size: 1.5rem;
+            margin-top: 5px;
+            height: 25px;
+        }
+
+        /* Player Zone */
+        .player-hand {
+            border-top: 2px solid rgba(212, 175, 55, 0.3);
+            width: 100%;
+            padding: 20px;
+            background: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .bid-btn { background-color: var(--gold); color: black; }
+        .pass-btn { background-color: #555; color: white; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .status-msg {
+            margin-top: 10px;
+            font-style: italic;
+            color: #ccc;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div id="pot-display">GRAND POT: $50.00</div>
+        <div id="balance">Chips: $100.00</div>
+    </header>
+
+    <div class="table">
+        <div class="banker-row">
+            <div class="card-slot">
+                <div class="card" id="card-1">11</div>
+                <div class="slide-indicator">REF</div>
+            </div>
+            <div class="card-slot">
+                <div class="card back" id="card-2">?</div>
+                <div id="slide-2" class="slide-indicator"></div>
+            </div>
+            <div class="card-slot">
+                <div class="card back" id="card-3">?</div>
+                <div id="slide-3" class="slide-indicator"></div>
+            </div>
+            <div class="card-slot">
+                <div class="card back" id="card-4">?</div>
+                <div id="slide-4" class="slide-indicator"></div>
+            </div>
+        </div>
+        <div id="game-status" class="status-msg">Banker peeks at Card 2...</div>
+    </div>
+
+    <div class="player-hand">
+        <p>Your Card: <span style="color:var(--gold); font-weight:bold;">9 of Spades</span></p>
+        <div class="controls">
+            <button class="pass-btn" onclick="handlePass()">Pass</button>
+            <button class="bid-btn" onclick="handleBid()">Bid $10</button>
+        </div>
+    </div>
+
+    <script>
+        // Game Logic State
+        let currentStep = 2; // Starting at Card 2 peek
+        let playerLocked = false;
+        const referenceValue = 11;
+        const mysteryCards = [11, 7, 11, 10]; // Pre-defined for simulation
+
+        function handleBid() {
+            playerLocked = true;
+            document.getElementById('game-status').innerText = "LOCKED! Waiting for reveal...";
+            disableButtons();
+            runShortcutReveal();
+        }
+
+        function handlePass() {
+            currentStep++;
+            if(currentStep > 4) {
+                runShortcutReveal();
+                return;
+            }
+            updateSlide();
+        }
+
+        function updateSlide() {
+            const mystery = mysteryCards[currentStep - 1];
+            const indicator = document.getElementById(`slide-${currentStep}`);
+            
+            if (mystery > referenceValue) indicator.innerText = "↑ UP";
+            else if (mystery < referenceValue) indicator.innerText = "↓ DOWN";
+            else indicator.innerText = "↔ CENTERED";
+
+            document.getElementById('game-status').innerText = `Banker slides Card ${currentStep}...`;
+        }
+
+        function disableButtons() {
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+
+        function runShortcutReveal() {
+            document.getElementById('game-status').innerText = "REVEALING ALL CARDS...";
+            setTimeout(() => {
+                for(let i=2; i<=4; i++) {
+                    const el = document.getElementById(`card-${i}`);
+                    el.innerText = mysteryCards[i-1];
+                    el.classList.remove('back');
+                }
+                document.getElementById('game-status').innerText = "YOU WIN! Distance: 1";
+            }, 1000);
+        }
+
+        // Initialize first slide
+        updateSlide();
+    </script>
+</body>
+</html>
