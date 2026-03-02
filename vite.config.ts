@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/sliding-four/', // ADD THIS LINE
+  base: '/The-Sliding-Four/', // ADD THIS LINE
 })
